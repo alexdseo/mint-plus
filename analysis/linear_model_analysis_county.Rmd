@@ -1,0 +1,822 @@
+---
+title: "lr_fend_ho_dm_county"
+author: "Alex Seo"
+date: "12/12/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, comment=NA, tidy=TRUE, tidy.opts=list(width.cutoff=60), warning=FALSE, message=FALSE)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(nnet)
+```
+
+## Get FEND result for ct-level
+
+```{r}
+df <- read.csv("ALL_FEND_county_level_98pct_all.csv")
+```
+
+# Linear Regression
+
+## Obesity
+
+```{r}
+# obesity ~ FEND
+obesity_fend<-lm(OBESITY_AdjPrev~ALL_FEND_pred, data=df);summary(obesity_fend)
+#confint(obesity_fend)
+# residual plot
+plot(predict(obesity_fend),rstandard(obesity_fend),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Obesity Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(obesity_fend),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(obesity_fend)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+# plot(df$ALL_FEND_pred, df$OBESITY_CrudePrev,
+#       xlab="FEND-census tract level",
+#       ylab="Obeseity Prevalence",
+#       main="Scatterplot of FEND vs Obesity",
+#       pch=23,bg="red",cex=0.4)
+
+ggplot(df, aes(ALL_FEND_pred, OBESITY_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$ALL_FEND_pred),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$OBESITY_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "ALL_FEND_pred", y = "OBESITY_AdjPrev", title = "FEND-All menu vs Obesity Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+# obesity_fend_dm<-lm(OBESITY_CrudePrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob_F+pp_lowskillJob_M+pp_collegeEd_F+pp_collegeEd_M+employment_rate,data=df)
+# summary(obesity_fend_dm)
+# vif(obesity_fend_dm)
+```
+
+
+```{r}
+# with demographic dataset
+obesity_fend_dm<-lm(OBESITY_AdjPrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(obesity_fend_dm)
+#vif(obesity_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(obesity_fend_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# with only demographic dataset
+obesity_dm<-lm(OBESITY_AdjPrev~pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(obesity_dm)
+#vif(obesity_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(obesity_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+```{r}
+# obesity ~ number of restaurant
+obesity_rc<-lm(OBESITY_AdjPrev~restaurant_count, data=df);summary(obesity_rc)
+# confint(obesity_rc)
+# residual plot
+plot(predict(obesity_rc),rstandard(obesity_rc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Obesity Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(obesity_rc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(obesity_rc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+# plot(df$ALL_FEND_pred, df$OBESITY_CrudePrev,
+#       xlab="FEND-census tract level",
+#       ylab="Obeseity Prevalence",
+#       main="Scatterplot of FEND vs Obesity",
+#       pch=23,bg="red",cex=0.4)
+
+ggplot(df, aes(restaurant_count, OBESITY_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$restaurant_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$OBESITY_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "restaurant_count", y = "OBESITY_AdjPrev", title = "Number of restuarants vs Obesity Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+obesity_rc_dm<-lm(OBESITY_AdjPrev~restaurant_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(obesity_rc_dm)
+#vif(obesity_rc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(obesity_rc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# obesity ~ number of chain restaurant
+obesity_cc<-lm(OBESITY_AdjPrev~chains_count, data=df);summary(obesity_cc)
+# confint(obesity_cc)
+# residual plot
+plot(predict(obesity_cc),rstandard(obesity_cc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Obesity Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(obesity_cc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(obesity_cc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+# plot(df$ALL_FEND_pred, df$OBESITY_CrudePrev,
+#       xlab="FEND-census tract level",
+#       ylab="Obeseity Prevalence",
+#       main="Scatterplot of FEND vs Obesity",
+#       pch=23,bg="red",cex=0.4)
+
+ggplot(df, aes(chains_count, OBESITY_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$chains_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$OBESITY_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "chains_count", y = "OBESITY_AdjPrev", title = "Number of chain restuarants vs Obesity Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+obesity_cc_dm<-lm(OBESITY_AdjPrev~chains_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(obesity_cc_dm)
+#vif(obesity_cc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(obesity_cc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+## Diabetes
+
+```{r}
+# Diabetes ~ FEND
+diabetes_fend<-lm(DIABETES_AdjPrev~ALL_FEND_pred, data=df);summary(diabetes_fend)
+#confint(obesity_fend)
+# residual plot
+plot(predict(diabetes_fend),rstandard(diabetes_fend),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Diabetes Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(diabetes_fend),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(diabetes_fend)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(ALL_FEND_pred, DIABETES_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$ALL_FEND_pred),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$DIABETES_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "ALL_FEND_pred", y = "DIABETES_AdjPrev", title = "FEND-All menu vs Diabetes Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+
+```{r}
+# with demographic dataset
+diabetes_fend_dm<-lm(DIABETES_AdjPrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(diabetes_fend_dm)
+#vif(diabetes_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(diabetes_fend_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# with only demographic dataset
+diabetes_dm<-lm(DIABETES_AdjPrev~pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(diabetes_dm)
+#vif(diabetes_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(diabetes_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+```{r}
+# diabetes ~ number of restaurant
+diabetes_rc<-lm(DIABETES_AdjPrev~restaurant_count, data=df);summary(diabetes_rc)
+# confint(obesity_rc)
+# residual plot
+plot(predict(diabetes_rc),rstandard(diabetes_rc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Diabetes Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(diabetes_rc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(diabetes_rc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(restaurant_count, DIABETES_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$restaurant_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$DIABETES_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "restaurant_count", y = "DIABETES_AdjPrev", title = "Number of restuarants vs Diabetes Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+diabetes_rc_dm<-lm(DIABETES_AdjPrev~restaurant_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(diabetes_rc_dm)
+#vif(diabetes_rc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(diabetes_rc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# diabetes ~ number of chain restaurant
+diabetes_cc<-lm(DIABETES_AdjPrev~chains_count, data=df);summary(diabetes_cc)
+# confint(obesity_cc)
+# residual plot
+plot(predict(diabetes_cc),rstandard(diabetes_cc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted Diabetes Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(diabetes_cc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(diabetes_cc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+# plot(df$ALL_FEND_pred, df$OBESITY_CrudePrev,
+#       xlab="FEND-census tract level",
+#       ylab="Obeseity Prevalence",
+#       main="Scatterplot of FEND vs Obesity",
+#       pch=23,bg="red",cex=0.4)
+
+ggplot(df, aes(chains_count, DIABETES_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$chains_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$DIABETES_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "chains_count", y = "DIABETES_AdjPrev", title = "Number of chain restuarants vs Diabetes Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+diabetes_cc_dm<-lm(DIABETES_AdjPrev~chains_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(diabetes_cc_dm)
+#vif(diabetes_cc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(diabetes_cc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+## High Cholesterol
+
+```{r}
+# obesity ~ FEND
+highchol_fend<-lm(HIGHCHOL_AdjPrev~ALL_FEND_pred, data=df);summary(highchol_fend)
+#confint(obesity_fend)
+# residual plot
+plot(predict(highchol_fend),rstandard(highchol_fend),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Cholesterol Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highchol_fend),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highchol_fend)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(ALL_FEND_pred, HIGHCHOL_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$ALL_FEND_pred),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$HIGHCHOL_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "ALL_FEND_pred", y = "HIGHCHOL_AdjPrev", title = "FEND-All menu vs High Cholesterol Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+
+```{r}
+# with demographic dataset
+highchol_fend_dm<-lm(HIGHCHOL_AdjPrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highchol_fend_dm)
+# vif(highchol_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highchol_fend_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# with only demographic dataset
+highchol_dm<-lm(HIGHCHOL_AdjPrev~pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highchol_dm)
+# vif(highchol_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highchol_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+```{r}
+# highchol ~ number of restaurant
+highchol_rc<-lm(HIGHCHOL_AdjPrev~restaurant_count, data=df);summary(highchol_rc)
+# confint(obesity_rc)
+# residual plot
+plot(predict(highchol_rc),rstandard(highchol_rc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Cholesterol Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highchol_rc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highchol_rc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(restaurant_count, HIGHCHOL_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$restaurant_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$HIGHCHOL_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "restaurant_count", y = "HIGHCHOL_AdjPrev", title = "Number of restuarants vs High Cholesterol Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+highchol_rc_dm<-lm(HIGHCHOL_AdjPrev~restaurant_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highchol_rc_dm)
+#vif(highchol_rc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highchol_rc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# obesity ~ number of chain restaurant
+highchol_cc<-lm(HIGHCHOL_AdjPrev~chains_count, data=df);summary(highchol_cc)
+# confint(obesity_cc)
+# residual plot
+plot(predict(highchol_cc),rstandard(highchol_cc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Cholesterol Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highchol_cc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highchol_cc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(chains_count, HIGHCHOL_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$chains_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$HIGHCHOL_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "chains_count", y = "HIGHCHOL_AdjPrev", title = "Number of chain restuarants vs High Cholesterol Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+highchol_cc_dm<-lm(HIGHCHOL_AdjPrev~chains_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highchol_cc_dm)
+# vif(highchol_cc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highchol_cc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+## High Blood Pressure
+
+```{r}
+# obesity ~ FEND
+highbp_fend<-lm(BPHIGH_AdjPrev~ALL_FEND_pred, data=df);summary(highbp_fend)
+#confint(obesity_fend)
+# residual plot
+plot(predict(highbp_fend),rstandard(highbp_fend),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Blood Pressure Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highbp_fend),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highbp_fend)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(ALL_FEND_pred, BPHIGH_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$ALL_FEND_pred),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$BPHIGH_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "ALL_FEND_pred", y = "BPHIGH_AdjPrev", title = "FEND-All menu vs High Blood Pressure Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+
+```{r}
+# with demographic dataset
+highbp_fend_dm<-lm(BPHIGH_AdjPrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highbp_fend_dm)
+# vif(highbp_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highbp_fend_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# with only demographic dataset
+highbp_dm<-lm(BPHIGH_AdjPrev~pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highbp_dm)
+# vif(highbp_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highbp_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+```{r}
+# obesity ~ number of restaurant
+highbp_rc<-lm(BPHIGH_AdjPrev~restaurant_count, data=df);summary(highbp_rc)
+# confint(obesity_rc)
+# residual plot
+plot(predict(highbp_rc),rstandard(highbp_rc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Blood Pressure Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highbp_rc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highbp_rc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(restaurant_count, BPHIGH_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$restaurant_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$BPHIGH_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "restaurant_count", y = "BPHIGH_AdjPrev", title = "Number of restuarants vs Obesity Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+highbp_rc_dm<-lm(BPHIGH_AdjPrev~restaurant_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highbp_rc_dm)
+#vif(highbp_rc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highbp_rc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# obesity ~ number of chain restaurant
+highbp_cc<-lm(BPHIGH_AdjPrev~chains_count, data=df);summary(highbp_cc)
+# confint(obesity_cc)
+# residual plot
+plot(predict(highbp_cc),rstandard(highbp_cc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted High Blood Pressure Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(highbp_cc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(highbp_cc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(chains_count, BPHIGH_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$chains_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$BPHIGH_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "chains_count", y = "BPHIGH_AdjPrev", title = "Number of chain restuarants vs High Blood Pressure Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+highbp_cc_dm<-lm(BPHIGH_AdjPrev~chains_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(highbp_cc_dm)
+#vif(obesity_cc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(highbp_cc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+## CHD (Heart Disease)
+
+```{r}
+# obesity ~ FEND
+chd_fend<-lm(CHD_AdjPrev~ALL_FEND_pred, data=df);summary(chd_fend)
+#confint(obesity_fend)
+# residual plot
+plot(predict(chd_fend),rstandard(chd_fend),pch=23,bg="red",cex=1.2,
+    xlab="Predicted CHD Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(chd_fend),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(chd_fend)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+
+ggplot(df, aes(ALL_FEND_pred, CHD_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$ALL_FEND_pred),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$CHD_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "ALL_FEND_pred", y = "CHD_AdjPrev", title = "FEND-All menu vs CHD Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+
+```{r}
+# with demographic dataset
+chd_fend_dm<-lm(CHD_AdjPrev~ALL_FEND_pred+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(chd_fend_dm)
+# vif(obesity_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(chd_fend_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# with only demographic dataset
+chd_dm<-lm(CHD_AdjPrev~pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(chd_dm)
+# vif(obesity_fend_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(chd_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+```{r}
+# obesity ~ number of restaurant
+chd_rc<-lm(CHD_AdjPrev~restaurant_count, data=df);summary(chd_rc)
+# confint(obesity_rc)
+# residual plot
+plot(predict(chd_rc),rstandard(chd_rc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted CHD Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(chd_rc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(chd_rc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(restaurant_count, CHD_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$restaurant_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$CHD_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "restaurant_count", y = "CHD_AdjPrev", title = "Number of restuarants vs CHD Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+chd_rc_dm<-lm(CHD_AdjPrev~restaurant_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(chd_rc_dm)
+#vif(obesity_rc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(chd_rc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+```{r}
+# obesity ~ number of chain restaurant
+chd_cc<-lm(CHD_AdjPrev~chains_count, data=df);summary(chd_cc)
+# confint(obesity_cc)
+# residual plot
+plot(predict(chd_cc),rstandard(chd_cc),pch=23,bg="red",cex=1.2,
+    xlab="Predicted CHD Prevalence", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+# qq-norm
+qqnorm(rstandard(chd_cc),pch=23,bg="red",cex=1.2)
+abline(a=0,b=1,col="black",lwd=3)
+# cook's distance
+cooki = cooks.distance(chd_cc)
+plot(1:dim(df)[1],cooki,type="p",pch=23,bg="red",cex=1.2,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+```{r}
+ggplot(df, aes(chains_count, CHD_AdjPrev)) +
+  geom_point(alpha=0.1,shape=18) +
+  geom_vline(xintercept=mean(df$chains_count),color="red",linetype="dashed") +
+  geom_hline(yintercept=mean(df$CHD_AdjPrev),color="red",linetype="dashed") + 
+  geom_smooth(method="lm",se=TRUE) +
+  labs(x = "chains_count", y = "CHD_AdjPrev", title = "Number of chain restuarants vs CHD Prevalence") +
+  theme_classic() +
+  theme(plot.title=element_text(size=13),axis.title=element_text(size=10),legend.title=element_text(size=10))
+```
+
+```{r}
+# with demographic dataset
+chd_cc_dm<-lm(CHD_AdjPrev~chains_count+pp_black+median_income+pp_publicTP+pp_longcomute+pp_lowskillJob+pp_collegeEd+employment_rate,data=df)
+summary(chd_cc_dm)
+#vif(obesity_cc_dm)
+#create vector of VIF values
+vif_values <- data.frame(vif(chd_cc_dm))
+vif_values <- cbind(variables = rownames(vif_values), vif_values)
+rownames(vif_values) <- 1:nrow(vif_values)
+names(vif_values)[2] <-"vif_value"
+#create horizontal bar chart to display each VIF value
+ggplot(data=vif_values, aes(x = variables,y=vif_value)) +
+  geom_bar(stat="identity", width=0.5) +
+  theme(axis.text.x=element_text(size=rel(0.9), angle=45))
+```
+
+
+
+
+

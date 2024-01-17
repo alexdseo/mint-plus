@@ -1,26 +1,6 @@
 import pandas as pd
 from tqdm import tqdm
 
-def outlier_detection():
-    # Save number of menu per restaurant
-    num_menu = pd.DataFrame()
-    # Large-scale dataset divided in 11 batches
-    for i in tqdm(range(1, 11)):
-        inference_complete = pd.read_csv('inference_complete_' + str(i) + '.csv',
-                                         low_memory=False, lineterminator='\n')
-        num_menu_tmp = pd.DataFrame(inference_complete.groupby(['establishment_id']).count()['id'])
-        # print(len(x))
-        num_menu_tmp['establishment_id'] = num_menu_tmp.index
-        num_menu_tmp = num_menu_tmp.reset_index(drop=True)
-        num_menu = pd.concat([num_menu, num_menu_tmp])
-    num_menu = num_menu.reset_index(drop=True)
-    num_menu = num_menu[['establishment_id', 'id']]
-    num_menu = num_menu.rename(columns={'id': 'count'})
-    # <=5 and >=693 # 1% from each tails
-    ol_1p = num_menu[(num_menu['count'] <= 5) | (num_menu['count'] >= 693)]['establishment_id']
-
-    return ol_1p
-
 def create_RND(ol_1p):
     # AMDD
     ALL_RND, APP_RND, MAIN_RND, DSRT_RND, DRNK_RND = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -84,5 +64,4 @@ def create_RND(ol_1p):
     DRNK_RND.to_csv('DRNK_RND_pp98pct.csv', index=False)
 
 if __name__ == "__main__":
-    ol_1p = outlier_detection()
-    create_RND(ol_1p)
+    create_RND(pd.read_csv('ol_1p.csv'))
